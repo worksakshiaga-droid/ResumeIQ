@@ -1,0 +1,227 @@
+
+from io import BytesIO
+from datetime import date
+from xml.sax.saxutils import escape
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+    HRFlowable
+)
+
+
+def generate_learning_pdf(roadmap, weekly_timeline):
+
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=45,
+        leftMargin=45,
+        topMargin=45,
+        bottomMargin=45
+    )
+
+    # COLORS
+    forest_green = colors.HexColor("#244C3A")
+    warm_ivory = colors.HexColor("#F8F5EC")
+    copper = colors.HexColor("#B77950")
+    dark_text = colors.HexColor("#303030")
+
+    styles = getSampleStyleSheet()
+
+    styles.add(ParagraphStyle(
+        name="MainTitle",
+        parent=styles["Title"],
+        fontSize=25,
+        textColor=forest_green,
+        alignment=TA_CENTER,
+        spaceAfter=8
+    ))
+
+    styles.add(ParagraphStyle(
+        name="SubtitleCustom",
+        parent=styles["Normal"],
+        fontSize=10,
+        textColor=dark_text,
+        alignment=TA_CENTER,
+        spaceAfter=20
+    ))
+
+    styles.add(ParagraphStyle(
+        name="SectionCustom",
+        parent=styles["Heading2"],
+        fontSize=15,
+        textColor=forest_green,
+        spaceBefore=16,
+        spaceAfter=9
+    ))
+
+    styles.add(ParagraphStyle(
+        name="SkillCustom",
+        parent=styles["Heading3"],
+        fontSize=12,
+        textColor=copper,
+        spaceBefore=10,
+        spaceAfter=6
+    ))
+
+    styles.add(ParagraphStyle(
+        name="BodyCustom",
+        parent=styles["BodyText"],
+        fontSize=9,
+        leading=14,
+        textColor=dark_text,
+        spaceAfter=5
+    ))
+
+    story = []
+
+    # HEADER
+    story.append(Spacer(1, 15))
+
+    story.append(Paragraph(
+        "ResumeIQ",
+        styles["MainTitle"]
+    ))
+
+    story.append(Paragraph(
+        "PERSONALIZED SKILL GAP LEARNING PLAN",
+        styles["SubtitleCustom"]
+    ))
+
+    story.append(HRFlowable(
+        width="100%",
+        thickness=2,
+        color=copper,
+        spaceAfter=15
+    ))
+
+    story.append(Paragraph(
+        f"<b>Report Date:</b> {date.today().strftime('%d %B %Y')}",
+        styles["BodyCustom"]
+    ))
+
+    story.append(Paragraph(
+        f"<b>Skills to Improve:</b> {len(roadmap)}",
+        styles["BodyCustom"]
+    ))
+
+    # SKILL ROADMAP
+    story.append(Paragraph(
+        "1. Personalized Skill Roadmap",
+        styles["SectionCustom"]
+    ))
+
+    for index, item in enumerate(roadmap, 1):
+
+        skill = escape(str(item.get("skill", "Unknown Skill")))
+
+        story.append(Paragraph(
+            f"{index}. {skill}",
+            styles["SkillCustom"]
+        ))
+
+        story.append(Paragraph(
+            "<b>Topics to Learn</b>",
+            styles["BodyCustom"]
+        ))
+
+        for topic in item.get("topics", []):
+
+            story.append(Paragraph(
+                f"- {escape(str(topic))}",
+                styles["BodyCustom"]
+            ))
+
+        story.append(Paragraph(
+            f"<b>Practice Task:</b> {escape(str(item.get('practice', 'Not specified')))}",
+            styles["BodyCustom"]
+        ))
+
+        story.append(Paragraph(
+            f"<b>Mini Project:</b> {escape(str(item.get('project', 'Not specified')))}",
+            styles["BodyCustom"]
+        ))
+
+        story.append(Paragraph(
+            f"<b>Suggested Duration:</b> {escape(str(item.get('duration', 'To be determined')))}",
+            styles["BodyCustom"]
+        ))
+
+        story.append(Paragraph(
+            "<b>Learning Resources:</b>",
+            styles["BodyCustom"]
+        ))
+
+        for resource in item.get("resources", []):
+
+            story.append(Paragraph(
+                f"- {escape(str(resource))}",
+                styles["BodyCustom"]
+            ))
+
+        story.append(Spacer(1, 8))
+
+    # WEEKLY TIMELINE
+    story.append(Paragraph(
+        "2. Four-Week Learning Timeline",
+        styles["SectionCustom"]
+    ))
+
+    for week, tasks in weekly_timeline.items():
+
+        story.append(Paragraph(
+            escape(str(week)),
+            styles["SkillCustom"]
+        ))
+
+        if tasks:
+
+            for task in tasks:
+
+                story.append(Paragraph(
+                    f"- {escape(str(task))}",
+                    styles["BodyCustom"]
+                ))
+
+        else:
+
+            story.append(Paragraph(
+                "No tasks assigned.",
+                styles["BodyCustom"]
+            ))
+
+        story.append(Spacer(1, 6))
+
+    # FOOTER
+    story.append(Spacer(1, 20))
+
+    story.append(HRFlowable(
+        width="100%",
+        thickness=1,
+        color=copper
+    ))
+
+    story.append(Spacer(1, 8))
+
+    story.append(Paragraph(
+        "Generated by ResumeIQ | Your Career Development Companion",
+        styles["SubtitleCustom"]
+    ))
+
+    # GENERATE PDF
+    doc.build(story)
+
+    buffer.seek(0)
+
+    return buffer.getvalue()
